@@ -34,16 +34,26 @@ function extractSubjectInfo(data) {
       i != materias.length - 1 &&
       !materias[i + 1].classList.contains("destaque") // verifica se o uma matéria tem dois professores
     ) {
-      const teacherName = splitted[7].slice(0, splitted[7].indexOf("(") - 1);
-      tmp.professores.push(teacherName);
+      const nome = splitted[7].slice(0, splitted[7].indexOf("(") - 1);
+      tmp.professores.push(nome);
       continue;
     } else {
-      const teacherName = splitted[7].slice(0, splitted[7].indexOf("(") - 1);
-      tmp.professores.push(teacherName);
+      const nome = splitted[7].slice(0, splitted[7].indexOf("(") - 1);
+      tmp.professores.push(nome);
+    }
+
+    tmp.periodo = splitted[0];
+    // separa os dois professores de uma matéria em duas turmas
+    if (tmp.professores.length > 1) {
+      const segundoProfessor = tmp.professores.pop();
+      result.push({
+        materia: tmp.materia,
+        professores: [segundoProfessor],
+        periodo: tmp.periodo,
+      });
     }
 
     // adiciona o periodo
-    tmp.periodo = splitted[0];
     result.push(tmp);
     tmp = { materia: "", professores: [], periodo: "" };
   }

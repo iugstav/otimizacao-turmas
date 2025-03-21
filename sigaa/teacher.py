@@ -19,6 +19,7 @@ nomes_materias = [
     "COMPUTACAO GRAFICA",
     "BANCO DE DADOS",
     "ANALISE I",
+    "ANALISE II",
     "INTRODUÇÃO DA TEORIA DOS GRAFOS",
     "FÍSICA I",
     "INTRODUÇÃO ÀS EQUAÇÕES DIFERENCIAIS PARCIAIS",
@@ -28,7 +29,6 @@ nomes_materias = [
     "PROGRAMAÇÃO NÃO-LINEAR",
     "INTRODUÇÃO À MATEMÁTICA COMBINATÓRIA",
     "CALCULO IV",
-    "ÁLGEBRA LINEAR COMPUTACIONAL",
 ]
 
 input = "output.csv"
@@ -44,4 +44,5 @@ grouped = (
 )
 grouped["Matéria"] = grouped["Matéria"].apply(remove_older)
 grouped = grouped[grouped["Matéria"].apply(lambda x: len(x) > 0)]
-grouped.to_csv(output)
+# grouped.to_csv(output)
+print(len(nomes_materias))

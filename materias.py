@@ -1,0 +1,45 @@
+nomes_materias = [
+    "ESPAÇOS MÉTRICOS",
+    "MÉTODOS DE ELEMENTOS FINITOS",
+    "REDE DE COMPUTADORES",
+    "PROGRAMAÇÃO INTEIRA",
+    "FISICA II",
+    "COMPUTACAO GRAFICA",
+    "BANCO DE DADOS",
+    "ANALISE I",
+    "ANALISE II",
+    "INTRODUÇÃO DA TEORIA DOS GRAFOS",
+    "FISICA I",
+    "INTRODUÇÃO ÀS EQUAÇÕES DIFERENCIAIS PARCIAIS",
+    "ANÁLISE DE ALGORITMOS",
+    "ESTRUTURA DE DADOS",
+    "ANÁLISE NUMÉRICA I",
+    "PROGRAMAÇÃO NÃO-LINEAR",
+    "INTRODUÇÃO À MATEMÁTICA COMBINATÓRIA",
+    "CALCULO IV",
+]
+
+periodos = {
+    5: [
+        "CALCULO IV",
+        "ESTRUTURA DE DADOS",
+        "INTRODUÇÃO À MATEMÁTICA COMBINATÓRIA",
+        "PROGRAMAÇÃO NÃO-LINEAR",
+        "ANÁLISE NUMÉRICA I",
+    ],
+    6: [
+        "ANALISE I",
+        "INTRODUÇÃO DA TEORIA DOS GRAFOS",
+        "FISICA I",
+        "INTRODUÇÃO ÀS EQUAÇÕES DIFERENCIAIS PARCIAIS",
+        "ANÁLISE DE ALGORITMOS",
+    ],
+    7: [
+        "ANALISE II",
+        "PROGRAMAÇÃO INTEIRA",
+        "FISICA II",
+        "COMPUTACAO GRAFICA",
+        "BANCO DE DADOS",
+    ],
+    8: ["ESPAÇOS MÉTRICOS", "REDE DE COMPUTADORES", "MÉTODOS DE ELEMENTOS FINITOS"],
+}

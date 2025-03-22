@@ -1,46 +1,110 @@
-from pulp import LpProblem, LpVariable, LpMaximize, lpSum, LpBinary, value
+from ast import literal_eval
+from itertools import chain
+from collections import defaultdict
+import csv
+import os
 import random
+import pandas as pd
+import networkx as nx
+from pulp import LpProblem, LpVariable, LpMaximize, lpSum, LpBinary, value
+from materias import nomes_materias, periodos
 
 # Parâmetros
 num_alunos = 40
-num_materias = 20
+num_materias = len(nomes_materias)
 num_optativas = 5  # Número de matérias optativas disponíveis
 capacidade_max = 40  # Máximo de alunos por matéria
-num_professores = 11
 horarios_disponiveis = ["18h-20h", "20h-22h"]  # Dois horários possíveis por dia
 dias_semana = ["Seg", "Ter", "Qua", "Qui", "Sex"]  # Dias disponíveis
-
 total_materias = num_materias + num_optativas
-professores_por_materia = []
 
-for p in range(num_professores):
-    professores_por_materia.append(p)
+# uso de dataframes
+alunos_set = pd.read_csv("alunos.csv")
+professores_set = pd.read_csv("professores.csv")
+professores_set["Matéria"] = professores_set["Matéria"].apply(
+    lambda x: literal_eval(x) if "[" in x else x
+)
+num_professores = len(professores_set)
+materias_dadas = {
+    row["Professores"]: row["Matéria"] for _, row in professores_set.iterrows()
+}
 
-remaining = total_materias - num_professores
-for _ in range(remaining):
-    contagem = {p: professores_por_materia.count(p) for p in range(num_professores)}
-    prof_validos = [p for p, count in contagem.items() if count < 3]
-    prof_escolhido = random.choice(prof_validos)
-    professores_por_materia.append(prof_escolhido)
+ids = {p: i for i, p in enumerate(materias_dadas.keys())}
 
-random.shuffle(professores_por_materia)
+# Lista com nomes das matérias
+# Criar dicionário associando cada matéria ao seu período
+periodos_materias = {}
+for periodo, materias in periodos.items():
+    for materia in materias:
+        periodos_materias[materia] = periodo
+
+professores_por_materia = {}
+for prof, materias in materias_dadas.items():
+    for m in nomes_materias:
+        if m in materias:
+            if m not in professores_por_materia:
+                professores_por_materia[m] = []
+            professores_por_materia[m].append(prof)
+
+materias_por_professor = {p: [] for p in list(materias_dadas.keys())}
+materias_ocupadas = {m: False for m in nomes_materias}
+for materia, professores in professores_por_materia.items():
+    if len(professores) == 1:
+        materias_por_professor[professores[0]].append(materia)
+        materias_ocupadas[materia] = True
+        continue
+
+    prof_escolhido = professores[random.randint(0, len(professores) - 1)]
+    if len(materias_por_professor[prof_escolhido]) >= 1:
+        alternativa = ""
+        for prof, m in materias_dadas.items():
+            if prof == prof_escolhido:
+                continue
+            elif materia not in m:
+                continue
+
+            if len(materias_por_professor[prof]) >= 2:
+                continue
+
+            alternativa = prof
+            break
+
+        if len(alternativa) == 0:
+            materias_por_professor[prof_escolhido].append(materia)
+            materias_ocupadas[materia] = True
+    else:
+        materias_por_professor[prof_escolhido].append(materia)
+        materias_ocupadas[materia] = True
+
+
+remaining = [m for m in materias_ocupadas if materias_ocupadas[m] == False]
+for materia in remaining:
+    for professor, materias in materias_dadas.items():
+        if materia in materias:
+            materias_ocupadas[materia] = True
+            materias_por_professor[professor].append(materia)
+            break
+
+# TODO: adicionar optativas
+professores_ids = []
+for professor, materias in materias_por_professor.items():
+    for m in materias:
+        professores_ids.append(ids[professor])
 
 # Criar o modelo de otimização
 model = LpProblem("Alocacao_Alunos", LpMaximize)
 
-# Variáveis de decisão: x[i][j] = 1 se aluno i estiver na matéria j, 0 caso contrário
+# Variáveis de decisão
 x = [
     [LpVariable(f"x_{i}_{j}", 0, 1, LpBinary) for j in range(num_materias)]
     for i in range(num_alunos)
 ]
 
-# Variáveis para matérias optativas
 optativas = [
     [LpVariable(f"opt_{i}_{j}", 0, 1, LpBinary) for j in range(num_optativas)]
     for i in range(num_alunos)
 ]
 
-# Variáveis para alocar matérias nos horários disponíveis (cada matéria ocorre em 2 horários por semana)
 horarios = [
     [
         [
@@ -52,13 +116,13 @@ horarios = [
     for j in range(num_materias + num_optativas)
 ]
 
-# Preferências dos alunos (aleatórias para simulação)
+# Preferências aleatórias dos alunos
 preferencias = {
     i: random.sample(range(num_materias), random.randint(5, 7))
     for i in range(num_alunos)
 }
 
-# 🔹 Restrição 1: Cada aluno deve ter entre 5 e 7 matérias (incluindo até 2 optativas)
+# Restrições de alocação
 for i in range(num_alunos):
     model += (
         lpSum(x[i][j] for j in preferencias[i])
@@ -77,14 +141,12 @@ for i in range(num_alunos):
         f"Max_Optativas_Aluno_{i}",
     )
 
-# 🔹 Restrição 2: Capacidade máxima por matéria
 for j in range(num_materias):
     model += (
         lpSum(x[i][j] for i in range(num_alunos)) <= capacidade_max,
         f"Capacidade_Materia_{j}",
     )
 
-# 🔹 Restrição 3: Cada matéria deve ter **exatamente 2 horários semanais** em dias diferentes
 for j in range(num_materias + num_optativas):
     model += (
         lpSum(
@@ -96,7 +158,6 @@ for j in range(num_materias + num_optativas):
         f"Dois_Horarios_Por_Materia_{j}",
     )
 
-# 🔹 Restrição 4: Cada matéria só pode ser alocada uma vez por dia
 for j in range(num_materias + num_optativas):
     for d in range(len(dias_semana)):
         model += (
@@ -104,12 +165,12 @@ for j in range(num_materias + num_optativas):
             f"Uma_Vez_Por_Dia_{j}_{d}",
         )
 
-# 🔹 Nova Restrição 5: Professores não podem ter conflitos de horário
+# TODO: adicionar optativas na conta
 for p in range(num_professores):
     materias_do_professor = [
         j
-        for j in range(num_materias + num_optativas)
-        if professores_por_materia[j] == p
+        for j in range(num_materias)
+        if professores_ids[j] == p
     ]
     for d in range(len(dias_semana)):
         for h in range(len(horarios_disponiveis)):
@@ -118,8 +179,7 @@ for p in range(num_professores):
                 f"Professor {p} não pode dar aula em dois lugares {d} {h}",
             )
 
-
-# 🔹 Função Objetivo: Maximizar alocação considerando preferências dos alunos
+# Função objetivo
 model += (
     lpSum(x[i][j] for i in range(num_alunos) for j in preferencias[i]),
     "Max_Inscricoes",
@@ -128,54 +188,45 @@ model += (
 # Resolver o modelo
 model.solve()
 
-# 🔹 Exibir resultados
-alunos_por_materia: dict[str, list[str]] = dict()
-print("\nAlocação dos alunos:")
-for i in range(num_alunos):
-    materias = [f"Matéria {j + 1}" for j in preferencias[i] if value(x[i][j]) == 1]
-    optativas_escolhidas = [
-        f"Optativa {j+1}" for j in range(num_optativas) if value(optativas[i][j]) == 1
-    ]
+# Criar pasta para salvar os CSVs
+pasta = "resultados"
+os.makedirs(pasta, exist_ok=True)
 
-    # Se o aluno tiver menos de 5 matérias, adicionar optativas
-    while len(materias) + len(optativas_escolhidas) < 5:
-        optativa = f"Optativa {random.randint(1, num_optativas)}"
-        if optativa not in optativas_escolhidas:
-            optativas_escolhidas.append(optativa)
+# Salvar alocação de matérias com seus períodos
+with open(
+    os.path.join(pasta, "materias_periodos.csv"), mode="w", newline="", encoding="utf-8"
+) as file:
+    writer = csv.writer(file)
+    writer.writerow(["Matéria", "Período"])
+    for materia in nomes_materias:
+        writer.writerow([materia, periodos_materias.get(materia, "Desconhecido")])
 
-    for materia in (materias + optativas_escolhidas):
-        if materia not in alunos_por_materia:
-            alunos_por_materia[materia] = [f"Aluno {i+1}"]
-        else:
-            alunos_por_materia[materia].append(f"Aluno {i+1}")
+# Salvar horários das matérias
+with open(
+    os.path.join(pasta, "horarios_materias.csv"), mode="w", newline="", encoding="utf-8"
+) as file:
+    writer = csv.writer(file)
+    writer.writerow(["Matéria", "Período", "Dia", "Horário"])
 
-    print(f"Aluno {i+1}: Matérias {materias + optativas_escolhidas}")
+    for j in range(num_materias):
+        materia_nome = nomes_materias[j]
+        periodo = periodos_materias.get(materia_nome, "Desconhecido")
 
-print("\nAlunos por matéria:")
-for materias, alunos in alunos_por_materia.items():
-    print(f"{materias}")
-    for a in alunos:
-        print(a)
-    print()
+        for d in range(len(dias_semana)):
+            for h in range(len(horarios_disponiveis)):
+                if value(horarios[j][d][h]) == 1:
+                    writer.writerow(
+                        [materia_nome, periodo, dias_semana[d], horarios_disponiveis[h]]
+                    )
 
-# 🔹 Exibir horários das matérias
-print("\nHorários das matérias:")
-for j in range(num_materias + num_optativas):
-    horarios_alocados = []
-    for d in range(len(dias_semana)):
-        for h in range(len(horarios_disponiveis)):
-            if value(horarios[j][d][h]) == 1:
-                horarios_alocados.append(f"{dias_semana[d]} {horarios_disponiveis[h]}")
+# Salvar alocação de alunos
+with open(
+    os.path.join(pasta, "Alocacao_alunos.csv"), mode="w", newline="", encoding="utf-8"
+) as file:
+    writer = csv.writer(file)
+    writer.writerow(["Aluno", "Matérias Alocadas"])
+    for i in range(num_alunos):
+        materias = [nomes_materias[j] for j in preferencias[i] if value(x[i][j]) == 1]
+        writer.writerow([f"Aluno {i+1}", ", ".join(materias)])
 
-    print(f"Matéria {j+1}: {horarios_alocados}")
-
-# 🔹 Estatísticas finais
-total_inscricoes = sum(
-    value(x[i][j]) for i in range(num_alunos) for j in preferencias[i]
-)
-print(f"\nTotal de inscrições realizadas: {int(total_inscricoes)}")
-
-print("\nDistribuição de matérias por professor:")
-for p in range(num_professores):
-    total = professores_por_materia.count(p)
-    print(f"Professor {p+1}: {total} matérias")
+print(f"CSVs salvos na pasta: {pasta}")

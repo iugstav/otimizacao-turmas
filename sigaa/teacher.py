@@ -1,5 +1,7 @@
 import importlib
 import os
+from pathlib import Path, PureWindowsPath
+import platform
 import sys
 import pandas as pd
 
@@ -19,11 +21,15 @@ def remove_older(sub):
 
 
 # nomes dos arquivos de entrada e saída
-input = "output.csv"
-output = "../professores.csv"
+input = Path("output.csv")
+output = Path("../professores.csv")
 if os.getcwd().find("sigaa") == -1:
-    input = "sigaa/" + input
-    output = output[3:]
+    input = "sigaa" / input
+    output = Path("professores.csv")
+
+if platform.system() == "Windows":
+    input = PureWindowsPath(input)
+    output = PureWindowsPath(output)
 
 df = pd.read_csv(input)
 df = df[df["Professores"] != "A DEFIN"]

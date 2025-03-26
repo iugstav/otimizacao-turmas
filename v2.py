@@ -5,7 +5,7 @@ import csv
 import os
 import random
 import pandas as pd
-import networkx as nx
+from pathlib import Path
 from pulp import LpProblem, LpVariable, LpMaximize, lpSum, LpBinary, value
 from materias import nomes_materias, periodos
 
@@ -19,8 +19,9 @@ dias_semana = ["Seg", "Ter", "Qua", "Qui", "Sex"]  # Dias disponíveis
 total_materias = num_materias + num_optativas
 
 # uso de dataframes
+data_path = Path("data")
 # dataframe de alunos dummy
-alunos_set = pd.read_csv("alunos.csv")
+alunos_set = pd.read_csv(data_path / "alunos.csv")
 alunos = alunos_set["Aluno"].tolist()
 alunos_periodos = alunos_set["Período"].tolist()
 interesses = (
@@ -36,7 +37,7 @@ periodos_materias = (
 alunos_preferências = list(set(materia for lista in interesses for materia in lista))
 
 # dataframe de professores e suas materias lecionadas em semestres anteriores
-professores_set = pd.read_csv("professores.csv")
+professores_set = pd.read_csv(data_path / "professores.csv")
 professores_set["Matéria"] = professores_set["Matéria"].apply(
     lambda x: literal_eval(x) if "[" in x else x
 )
@@ -143,19 +144,19 @@ for i in range(num_alunos):
     model += (
         lpSum(x[i][j] for j in preferencias[i])
         + lpSum(optativas[i][j] for j in range(num_optativas))
-        >= 5,
+        <= 4,
         f"Minimo_Materias_Aluno_{i}",
     )
-    model += (
-        lpSum(x[i][j] for j in preferencias[i])
-        + lpSum(optativas[i][j] for j in range(num_optativas))
-        <= 7,
-        f"Maximo_Materias_Aluno_{i}",
-    )
-    model += (
-        lpSum(optativas[i][j] for j in range(num_optativas)) <= 2,
-        f"Max_Optativas_Aluno_{i}",
-    )
+    # model += (
+    #     lpSum(x[i][j] for j in preferencias[i])
+    #     + lpSum(optativas[i][j] for j in range(num_optativas))
+    #     <= 7,
+    #     f"Maximo_Materias_Aluno_{i}",
+    # )
+    # model += (
+    #     lpSum(optativas[i][j] for j in range(num_optativas)) <= 2,
+    #     f"Max_Optativas_Aluno_{i}",
+    # )
 
 for j in range(num_materias):
     model += (
@@ -254,7 +255,6 @@ with open(
         materias_alocadas = [
             alunos_preferências[j] for j in range(num_materias) if value(x[i][j]) == 1
         ]
-        print(materias_alocadas)
         writer.writerow([alunos[i], alunos_periodos[i], ", ".join(materias_alocadas)])
 
 print(f"CSVs salvos na pasta: {pasta}")

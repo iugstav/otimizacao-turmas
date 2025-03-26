@@ -1,4 +1,5 @@
 const fs = require("node:fs");
+const path = require("node:path");
 const { Worker, workerData } = require("node:worker_threads");
 const { createObjectCsvWriter } = require("csv-writer");
 
@@ -38,4 +39,6 @@ async function handleWorkers(filepaths, output) {
   }
 }
 
-handleWorkers(files, "output.csv");
+const dataDir = path.join(__dirname, "..", "data");
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
+handleWorkers(files, path.join(dataDir, "output.csv"));

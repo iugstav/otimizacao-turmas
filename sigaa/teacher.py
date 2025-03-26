@@ -20,12 +20,17 @@ def remove_older(sub):
     return result
 
 
+dir_path = Path.cwd() / "data/"
+if not dir_path.exists():
+    if dir_path.stem.find("sigaa"):
+        dir_path = dir_path.parents[1] / "data/"
+        dir_path.mkdir(exist_ok=True)
+    else:
+        dir_path.mkdir(exist_ok=True)
+
 # nomes dos arquivos de entrada e saída
-input = Path("output.csv")
-output = Path("../professores.csv")
-if os.getcwd().find("sigaa") == -1:
-    input = "sigaa" / input
-    output = Path("professores.csv")
+input = dir_path / "output.csv"
+output = dir_path / "professores.csv"
 
 if platform.system() == "Windows":
     input = PureWindowsPath(input)

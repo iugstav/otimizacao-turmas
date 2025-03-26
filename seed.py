@@ -56,7 +56,7 @@ def find_schedule_clash(materias: list[str]):
     return conflitos
 
 
-num_alunos = 10
+num_alunos = 40
 alunos = []
 for i in range(num_alunos):
     materias = [
